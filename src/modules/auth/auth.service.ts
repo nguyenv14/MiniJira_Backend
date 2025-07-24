@@ -10,7 +10,7 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private userService: UserService,
-  ) { }
+  ) {}
 
   async login(email: string, password: string, response: Response) {
     const user = await this.userService.findOne({ email: email });
@@ -34,6 +34,6 @@ export class AuthService {
       };
       return new BaseResponse(200, 'Login successful!', data);
     }
-    throw new BadRequestException(400, 'Invalid email or password!');
+    throw new BadRequestException('Invalid email or password!');
   }
 }
