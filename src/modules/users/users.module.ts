@@ -11,4 +11,4 @@ import { UserService } from './users.service';
   exports: [MongooseModule, UserService], // Quan trọng: export MongooseModule
   controllers: [UserController], // Có thể thêm controllers nếu cần
 })
-export class UserModule {}
+export class UserModule { }
