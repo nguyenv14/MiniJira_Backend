@@ -70,4 +70,7 @@ export class ProjectSaveRequest {
   @IsOptional()
   @IsMongoId({ message: 'Manager ID must be a valid MongoDB ID!' })
   manager?: Types.ObjectId;
+
+  @IsNotEmpty({ message: 'Color is required!' })
+  color: number
 }

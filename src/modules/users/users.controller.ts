@@ -34,4 +34,11 @@ export class UserController {
     this.userService.deleteUser(id);
     return new BaseResponse(200, 'Delete User success!', null);
   }
+
+  @Post('get-user-to-add-project')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleInWeb.ADMIN)
+  getUserToAddProject(@Body() data: { project_id: string }) {
+    return this.userService.getAllUserByAddProject(data.project_id);
+  }
 }

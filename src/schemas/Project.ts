@@ -51,6 +51,27 @@ export class Project {
 
   @Prop({ type: Types.ObjectId, ref: 'User' })
   manager: Types.ObjectId;
+
+  @Prop({ required: true, default: 0 })
+  color: number;
 }
 
 export const ProjectSchema = SchemaFactory.createForClass(Project);
+
+ProjectSchema.virtual('createdByUser', {
+  ref: 'User', // Tên của model User
+  localField: 'created_by', // Trường trong Project schema
+  foreignField: '_id', // Trường trong User schema
+  justOne: true // Mỗi project chỉ có 1 created_by
+});
+
+// Virtual cho manager
+ProjectSchema.virtual('managerUser', {
+  ref: 'User', // Tên của model User
+  localField: 'manager', // Trường trong Project schema
+  foreignField: '_id', // Trường trong User schema
+  justOne: true // Mỗi project chỉ có 1 manager
+});
+
+ProjectSchema.set('toObject', { virtuals: true });
+ProjectSchema.set('toJSON', { virtuals: true });

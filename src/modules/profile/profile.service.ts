@@ -1,22 +1,17 @@
 import { Injectable, BadRequestException, UnprocessableEntityException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User } from 'src/schemas/User';
+import { User, UserDocument } from 'src/schemas/User';
 import { BaseResponse } from 'src/utils/base-response';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class ProfileService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) { }
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) { }
 
   async findById(id: string) {
     const user = await this.userModel.findById(id);
-    return {
-      id: user?.id as string,
-      username: user?.username,
-      email: user?.email,
-      role: user?.role,
-    };
+    return new BaseResponse(200, 'Successful', user);
   }
 
   async updateProfile(
@@ -25,7 +20,6 @@ export class ProfileService {
       userName: string;
     },
   ) {
-    console.log(userData);
     const updatedUser = await this.userModel.findByIdAndUpdate(
       id,
       { username: userData.userName },

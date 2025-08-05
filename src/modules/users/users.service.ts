@@ -1,13 +1,18 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { User } from '../../schemas/User';
 import { UserSearchRequest } from 'src/dto/UserSearchRequest';
 import { BaseSearchService } from '../Base/BaseSearchService';
+import { BaseResponse } from 'src/utils/base-response';
+import { ProjectMember, ProjectMemberDocument } from 'src/schemas/ProjectMember';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) { }
+  constructor(
+    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(ProjectMember.name) private projectMemberModel: Model<ProjectMemberDocument>,
+  ) { }
 
   async findOne(data: any) {
     return this.userModel.findOne(data);
@@ -44,5 +49,16 @@ export class UserService {
       throw new BadRequestException('User not found');
     }
     return { message: 'User deleted successfully' };
+  }
+
+  async getAllUserByAddProject(projectId: string) {
+    const members = await this.projectMemberModel.find({ project_id: new Types.ObjectId(projectId) });
+    console.log('Project Members:', projectId, members);
+    const memberUserIds = members.map((m) => m.user_id.toString());
+    console.log('Member User IDs:', memberUserIds);
+    const users = await this.userModel.find(
+      { _id: { $nin: memberUserIds } }
+    );
+    return new BaseResponse(200, 'Users retrieved successfully', users);
   }
 }

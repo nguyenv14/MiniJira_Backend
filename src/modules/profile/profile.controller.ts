@@ -1,20 +1,23 @@
-import { Body, Controller, Get, Post, Param } from '@nestjs/common';
+import { Body, Controller, Get, Post, Param, Request, UsePipes, ValidationPipe } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
 import { ProfileService } from './profile.service';
-import { BaseResponse } from 'src/utils/base-response';
 import { ChangePasswordRequest } from 'src/dto/ChangePasswordRequest';
 
 @Controller('api/profile')
 export class ProfileController {
   constructor(private profileService: ProfileService) { }
 
-  @Get(':id')
+  @Get()
   @UseGuards(JwtAuthGuard)
-  async getUserById(@Param('id') id: string) {
-    const data = await this.profileService.findById(id);
-    console.log(data);
-    return new BaseResponse(200, 'Successful', data);
+  @UsePipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true
+  }))
+  getUserById(@Request() req) {
+    const userId = req.user?.id as string;
+    console.log(userId);
+    return this.profileService.findById(userId);
   }
 
   @Post(':id')

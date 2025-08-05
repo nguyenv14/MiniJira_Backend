@@ -45,3 +45,15 @@ export enum RoleInProject {
   LEADER = 2, // Can change status and review -> done and create update task
   MEMBER = 3 // can change status todo -> inprogress -> review
 }
+
+export enum BoardColor {
+  WHITE = 0,
+  BLUE = 1,
+  RED = 2,
+  GREEN = 3,
+  YELLOW = 4,
+  PURPLE = 5,
+  ORANGE = 6,
+  GRAY = 7,
+  NAVY = 8,
+}

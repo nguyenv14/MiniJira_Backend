@@ -6,14 +6,15 @@ import { Model, Types } from 'mongoose';
 import { Project, ProjectDocument } from '../../schemas/Project';
 import { ProjectSaveRequest } from '../../dto/projects/SaveProjectREquest';
 import { UserService } from '../users/users.service';
-import { ProjectMember, ProjectMemberDocument } from 'src/schemas/ProjectMember';
+import { ProjectMember, ProjectMemberDocument, ProjectMemberPopulated } from 'src/schemas/ProjectMember';
 import { RoleInProject } from 'src/utils/enum';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { BaseResponse } from 'src/utils/base-response';
 import { ProjectSearchRequest } from 'src/dto/projects/ProjectSearchRequest';
 import { BaseSearchOptions, BaseSearchService } from '../Base/BaseSearchService';
-// import { User, UserDocument } from 'src/schemas/User';
+import { User } from 'src/schemas/User';
+
 
 @Injectable()
 export class ProjectsService {
@@ -35,6 +36,7 @@ export class ProjectsService {
 
       const project = new this.projectModel({
         ...request,
+        manager: createdBy,
         created_by: createdBy,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -146,7 +148,8 @@ export class ProjectsService {
       // Populate references nếu cần
       const populatedData = await this.projectModel
         .find({ _id: { $in: result.data.map(item => item._id) } })
-        .populate('created_by manager')
+        .populate('createdByUser') // Populate virtual field
+        .populate('managerUser')   // Populate virtual field
         .exec();
 
       return new BaseResponse(200, 'Projects retrieved successfully!', {
@@ -163,17 +166,106 @@ export class ProjectsService {
   }
 
   // Lấy project theo ID
-  async findById(id: string): Promise<Project> {
-    // if (!Types.isValidObjectId(id)) {
-    //   throw new BadRequestException('Invalid project ID!');
-    // }
+  async findById(id: string): Promise<BaseResponse<ProjectDocument>> {
 
-    const project = await this.projectModel.findById(id).populate('created_by manager');
+    const project = await this.projectModel.findById(id).populate('managerUser');
     if (!project) {
       throw new BadRequestException('Project not found!');
     }
 
-    return project;
+    return new BaseResponse(200, 'Project found successfully!', project);
+  }
+
+  async findByProjectIdWithMembers(id: string, key: string) {
+    const searchCondition = key
+      ? {
+        $or: [
+          { username: { $regex: key, $options: 'i' } },
+          { email: { $regex: key, $options: 'i' } }
+        ]
+      }
+      : {};
+    const projectMembersRaw = await this.projectMemberModel.find({
+      project_id: new Types.ObjectId(id)
+    }).populate({
+      path: 'user',
+      select: 'username email role isActive isAdmin',
+      match: searchCondition
+    }) as unknown as ProjectMemberPopulated[];
+
+    const projectMembers = projectMembersRaw.filter(pm => pm?.user as User);
+    if (!projectMembers) {
+      throw new BadRequestException('No members found for this project!');
+    }
+    return new BaseResponse(200, 'Project members found successfully!', projectMembers);
+  }
+
+  async addMemberToProject(projectId: string, userId: string, role: number) {
+    try {
+      const project = await this.projectModel.findById(projectId);
+      if (!project) {
+        throw new BadRequestException('Project not found!');
+      }
+
+      const user = await this.userService.findOne({ _id: userId });
+      if (!user) {
+        throw new BadRequestException('User not found!');
+      }
+
+      const existingMember = await this.projectMemberModel.findOne({ project_id: projectId, user_id: userId });
+      if (existingMember) {
+        throw new BadRequestException('User is already a member of this project!');
+      }
+
+      const newMember = new this.projectMemberModel({
+        project_id: new Types.ObjectId(projectId),
+        user_id: new Types.ObjectId(userId),
+        role,
+        joined_at: new Date()
+      });
+
+      await newMember.save();
+      return new BaseResponse(200, 'Member added to project successfully!', newMember);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to add member to project: ' + error.message);
+    }
+  }
+
+  async removeMemberFromProject(projectId: string, userId: string) {
+    try {
+      const member = await this.projectMemberModel.findOne({ project_id: new Types.ObjectId(projectId), _id: new Types.ObjectId(userId) });
+      if (!member) {
+        throw new BadRequestException('User is not a member of this project!');
+      }
+      await this.projectMemberModel.deleteOne({ _id: member._id });
+      return new BaseResponse(200, 'Member removed from project successfully!', null);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to remove member from project: ' + error.message);
+    }
+  }
+
+  async changeRoleMemberInProject(projectId: string, userId: string, role: number) {
+    try {
+      const member = await this.projectMemberModel.findOne({ project_id: new Types.ObjectId(projectId), _id: new Types.ObjectId(userId) });
+      if (!member) {
+        throw new BadRequestException('User is not a member of this project!');
+      }
+
+      member.role = role;
+      await member.save();
+      return new BaseResponse(200, 'Member role updated successfully!', member);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to change member role in project: ' + error.message);
+    }
   }
 
   // Lấy projects theo user (created by hoặc manager)
