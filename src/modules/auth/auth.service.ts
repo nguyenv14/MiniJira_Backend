@@ -10,13 +10,13 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private userService: UserService,
-  ) {}
+  ) { }
 
   async login(email: string, password: string, response: Response) {
     const user = await this.userService.findOne({ email: email });
     if (user && (await bcrypt.compare(password, user.password))) {
       const jwt = await this.jwtService.signAsync({
-        id: user.id as string,
+        id: user._id,
         email: user.email,
         role: user.role,
       });

@@ -4,6 +4,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { ProjectsModule } from './modules/projects/project.module';
+import { TaskModule } from './modules/tasks/task.module';
 
 @Module({
   imports: [
@@ -31,8 +33,10 @@ import { ProfileModule } from './modules/profile/profile.module';
     UserModule, // Uncomment this line to include the UserModule
     AuthModule, // Uncomment this line to include the AuthModule
     ProfileModule,
+    ProjectsModule,
+    TaskModule
   ],
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule { }
