@@ -61,4 +61,13 @@ export class UserService {
     );
     return new BaseResponse(200, 'Users retrieved successfully', users);
   }
+
+  async getAllUserByAddTask(projectId: string) {
+    const members = await this.projectMemberModel.find({ project_id: new Types.ObjectId(projectId) });
+    const users = await this.userModel.find(
+      {
+        _id: { $in: members.map((m) => m.user_id) },
+      });
+    return new BaseResponse(200, 'Users retrieved successfully', users);
+  }
 }

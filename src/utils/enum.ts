@@ -1,8 +1,31 @@
+// src/utils/enum.ts
 export enum TaskStatus {
   TODO = 1,
   IN_PROGRESS = 2,
   REVIEW = 3,
-  DONE = 4
+  DONE = 4,
+  CANCELLED = 5
+}
+
+export function getTaskStatusLabel(status: TaskStatus): string {
+  switch (status) {
+    case TaskStatus.TODO:
+      return 'To Do';
+    case TaskStatus.IN_PROGRESS:
+      return 'In Progress';
+    case TaskStatus.REVIEW:
+      return 'Review';
+    case TaskStatus.DONE:
+      return 'Done';
+    case TaskStatus.CANCELLED:
+      return 'Cancelled';
+    default:
+      return 'Unknown Status';
+  }
+}
+export enum HistoryAction {
+  CREATE = 1,
+  UPDATE = 2,
 }
 
 export enum TaskPriority {

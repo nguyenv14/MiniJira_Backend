@@ -5,6 +5,7 @@ import { UserModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { ProjectsModule } from './modules/projects/project.module';
+import { TaskModule } from './modules/tasks/task.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ProjectsModule } from './modules/projects/project.module';
     AuthModule, // Uncomment this line to include the AuthModule
     ProfileModule,
     ProjectsModule,
+    TaskModule
   ],
   controllers: [],
   providers: [],

@@ -41,4 +41,12 @@ export class UserController {
   getUserToAddProject(@Body() data: { project_id: string }) {
     return this.userService.getAllUserByAddProject(data.project_id);
   }
+
+  @Post('get-user-to-add-task')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleInWeb.ADMIN, RoleInWeb.LEADER)
+  getUserToAddTask(@Body() data: { project_id: string }) {
+    return this.userService.getAllUserByAddTask(data.project_id);
+  }
+
 }

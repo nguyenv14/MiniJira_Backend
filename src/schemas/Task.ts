@@ -6,8 +6,6 @@ export type TaskDocument = HydratedDocument<Task>;
 
 @Schema({ timestamps: true })
 export class Task {
-  @Prop()
-  _id: Types.ObjectId;
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'Project' })
   project_id: Types.ObjectId;
@@ -55,13 +53,31 @@ export class Task {
   actual_hours: number;
 
   @Prop()
-  completed_at: Date; 
+  completed_at: Date;
 
   @Prop()
-  parent_task_id: Types.ObjectId; 
+  parent_task_id: Types.ObjectId;
 
   @Prop({ default: false })
   is_subtask: boolean;
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);
+
+TaskSchema.virtual('userAssignee', {
+  ref: 'User', // Tên của model User
+  localField: 'assignee', // Trường trong Project schema
+  foreignField: '_id', // Trường trong User schema
+  justOne: true
+});
+
+TaskSchema.virtual('userCreated', {
+  ref: 'User', // Tên của model User
+  localField: 'created_by', // Trường trong Project schema
+  foreignField: '_id', // Trường trong User schema
+  justOne: true
+});
+
+TaskSchema.set('toJSON', {
+  virtuals: true
+});

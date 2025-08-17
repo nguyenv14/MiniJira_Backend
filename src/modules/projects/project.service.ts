@@ -26,8 +26,30 @@ export class ProjectsService {
   ) {
   }
 
-  // Tạo project mới
-  async create(request: ProjectSaveRequest, createdBy: Types.ObjectId): Promise<BaseResponse<Project>> {
+
+  // projects/projects.service.ts
+
+  async save(request: ProjectSaveRequest, userId: Types.ObjectId) {
+    try {
+      // Kiểm tra nếu có _id thì là update, ngược lại là create
+      console.log('Request to save project:', request);
+      if (request._id) {
+        // Update mode
+        return await this.update(request, userId);
+      } else {
+        // Create mode
+        return await this.create(request, userId);
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to save project: ' + error.message);
+    }
+  }
+
+  // Method tạo mới project (giữ nguyên logic cũ)
+  async create(request: ProjectSaveRequest, createdBy: Types.ObjectId) {
     try {
       const existingProject = await this.projectModel.findOne({ code: request.code });
       if (existingProject) {
@@ -55,13 +77,13 @@ export class ProjectsService {
         await projectMember.save();
       } catch (error) {
         if (error instanceof BadRequestException) {
-          throw error; // Re-throw lỗi validation
+          throw error;
         }
         await this.projectModel.findByIdAndDelete(savedProject._id);
         throw new BadRequestException('Failed to add creator to project members: ' + error.message);
       }
 
-      return new BaseResponse(200, 'Project create successful!', savedProject);
+      return new BaseResponse(200, 'Project created successfully!', savedProject);
 
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -70,6 +92,91 @@ export class ProjectsService {
       throw new BadRequestException('Failed to create project: ' + error.message);
     }
   }
+
+  async update(request: ProjectSaveRequest, updatedBy: Types.ObjectId) {
+    try {
+      // Kiểm tra project có tồn tại không
+      const existingProject = await this.projectModel.findById(request._id);
+      if (!existingProject) {
+        throw new BadRequestException('Project not found!');
+      }
+      // Kiểm tra nếu code bị thay đổi thì có trùng với project khác không
+      if (request.code !== existingProject.code) {
+        const duplicateProject = await this.projectModel.findOne({
+          code: request.code,
+          _id: { $ne: request._id }
+        });
+        console.log('Duplicate project:', duplicateProject);
+        if (duplicateProject) {
+          throw new BadRequestException('Project code already exists111!');
+        }
+      }
+      const { _id, manager, ...updateData } = request;
+      const updatedProject = await this.projectModel.findByIdAndUpdate(
+        _id,
+        {
+          ...updateData,
+          manager: new Types.ObjectId(manager),
+          updated_by: updatedBy,
+          updatedAt: new Date(),
+        },
+        { new: true }
+      );
+
+      return new BaseResponse(200, 'Project updated successfully!', updatedProject);
+
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to update project: ' + error.message);
+    }
+  }
+
+  // Tạo project mới
+  // async create(request: ProjectSaveRequest, createdBy: Types.ObjectId): Promise<BaseResponse<Project>> {
+  //   try {
+  //     const existingProject = await this.projectModel.findOne({ code: request.code });
+  //     if (existingProject) {
+  //       throw new BadRequestException('Project code already exists!');
+  //     }
+
+  //     const project = new this.projectModel({
+  //       ...request,
+  //       manager: createdBy,
+  //       created_by: createdBy,
+  //       createdAt: new Date(),
+  //       updatedAt: new Date(),
+  //     });
+
+  //     const savedProject = await project.save();
+
+  //     const projectMember = new this.projectMemberModel({
+  //       project_id: savedProject._id,
+  //       user_id: createdBy,
+  //       role: RoleInProject.ADMIN,
+  //       joined_at: new Date(),
+  //     });
+
+  //     try {
+  //       await projectMember.save();
+  //     } catch (error) {
+  //       if (error instanceof BadRequestException) {
+  //         throw error; // Re-throw lỗi validation
+  //       }
+  //       await this.projectModel.findByIdAndDelete(savedProject._id);
+  //       throw new BadRequestException('Failed to add creator to project members: ' + error.message);
+  //     }
+
+  //     return new BaseResponse(200, 'Project create successful!', savedProject);
+
+  //   } catch (error) {
+  //     if (error instanceof BadRequestException) {
+  //       throw error;
+  //     }
+  //     throw new BadRequestException('Failed to create project: ' + error.message);
+  //   }
+  // }
 
   // Lấy tất cả projects
   async search(searchRequest: ProjectSearchRequest): Promise<BaseResponse<any>> {

@@ -12,7 +12,7 @@ import { addMemberToProjectRequest } from 'src/dto/projects/AddMemberToProjectRe
 export class ProjectController {
   constructor(private projectService: ProjectsService) { }
 
-  @Post('create')
+  @Post('save')
   @UseGuards(JwtAuthGuard)
   @UsePipes(new ValidationPipe({
     whitelist: true,
@@ -20,7 +20,7 @@ export class ProjectController {
   }))
   async saveProject(@Body() requestData: ProjectSaveRequest, @Request() req) {
     const userId = req.user?.id as string;
-    return await this.projectService.create(requestData, new Types.ObjectId(userId));
+    return await this.projectService.save(requestData, new Types.ObjectId(userId));
   }
 
   @Post('')

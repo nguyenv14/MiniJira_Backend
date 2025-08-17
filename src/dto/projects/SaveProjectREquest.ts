@@ -6,6 +6,10 @@ import {
 import { Types } from 'mongoose';
 
 export class ProjectSaveRequest {
+
+  @IsOptional()
+  _id?: string;
+
   @IsNotEmpty({ message: 'Project name is required!' })
   @IsString({ message: 'Project name must be a string!' })
   @MinLength(3, { message: 'Project name must be at least 3 characters!' })
