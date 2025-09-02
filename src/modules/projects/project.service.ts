@@ -26,8 +26,17 @@ export class ProjectsService {
   ) {
   }
 
+  async getProjectByUserId(userId: Types.ObjectId) {
+    const projectMembers = await this.projectMemberModel.find({ user_id: userId });
 
-  // projects/projects.service.ts
+    const projectIds = projectMembers.map(pm => pm.project_id);
+
+    const projects = await this.projectModel.find({
+      _id: { $in: projectIds }
+    }).select('_id, name');
+
+    return projects;
+  }
 
   async save(request: ProjectSaveRequest, userId: Types.ObjectId) {
     try {

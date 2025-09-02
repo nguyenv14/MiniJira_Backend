@@ -78,6 +78,15 @@ TaskSchema.virtual('userCreated', {
   justOne: true
 });
 
+TaskSchema.virtual('project', {
+  ref: 'Project',
+  localField: 'project_id',
+  foreignField: '_id',
+  justOne: true
+})
+
+
+
 TaskSchema.set('toJSON', {
   virtuals: true
 });
