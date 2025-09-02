@@ -7,13 +7,17 @@ import { TaskController } from './task.controller';
 import { TasksService } from './task.service';
 import { Task, TaskSchema } from 'src/schemas/Task';
 import { TaskHistory, TaskHistorySchema } from 'src/schemas/TaskHistory';
+import { TaskChecklist, TaskChecklistSchema } from 'src/schemas/TaskChecklist';
+import { TaskComment, TaskCommentSchema } from 'src/schemas/TaskComment';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Task.name, schema: TaskSchema },
       { name: ProjectMember.name, schema: ProjectMemberSchema },
-      { name: TaskHistory.name, schema: TaskHistorySchema }
+      { name: TaskHistory.name, schema: TaskHistorySchema },
+      { name: TaskChecklist.name, schema: TaskChecklistSchema },
+      { name: TaskComment.name, schema: TaskCommentSchema }
     ]),
     UserModule,
   ],

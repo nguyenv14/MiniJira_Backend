@@ -7,10 +7,18 @@ import { ProjectSaveRequest } from 'src/dto/projects/SaveProjectREquest';
 import { Types } from 'mongoose';
 import { ProjectSearchRequest } from 'src/dto/projects/ProjectSearchRequest';
 import { addMemberToProjectRequest } from 'src/dto/projects/AddMemberToProjectRequest';
+import { BaseResponse } from 'src/utils/base-response';
 
 @Controller('api/projects')
 export class ProjectController {
   constructor(private projectService: ProjectsService) { }
+
+  @Post('get-project-by-userId')
+  @UseGuards(JwtAuthGuard)
+  async getProjectByUserId(@Request() req) {
+    const userId = req.user?.id as string;
+    return new BaseResponse(200, 'Success', await this.projectService.getProjectByUserId(new Types.ObjectId(userId)));
+  }
 
   @Post('save')
   @UseGuards(JwtAuthGuard)

@@ -4,13 +4,15 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ProjectMember, ProjectMemberDocument } from 'src/schemas/ProjectMember';
-import { getTaskStatusLabel, HistoryAction, TaskStatus } from 'src/utils/enum';
+import { getTaskStatusLabel, HistoryAction, RoleInProject, TaskStatus } from 'src/utils/enum';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { Task, TaskDocument } from 'src/schemas/Task';
 import { TaskSaveRequest } from 'src/dto/tasks/SaveTaskRequest';
 import { BaseResponse } from 'src/utils/base-response';
 import { TaskHistory, TaskHistoryDocument } from 'src/schemas/TaskHistory';
+import { TaskChecklist, TaskChecklistDocument } from 'src/schemas/TaskChecklist';
+import { TaskComment, TaskCommentDocument } from 'src/schemas/TaskComment';
 
 
 @Injectable()
@@ -19,6 +21,8 @@ export class TasksService {
     @InjectModel(Task.name) private taskModel: Model<TaskDocument>,
     @InjectModel(ProjectMember.name) private projectMemberModel: Model<ProjectMemberDocument>,
     @InjectModel(TaskHistory.name) private historyModel: Model<TaskHistoryDocument>,
+    @InjectModel(TaskChecklist.name) private checklistModel: Model<TaskChecklistDocument>,
+    @InjectModel(TaskComment.name) private taskCommentModel: Model<TaskCommentDocument>,
     @InjectConnection() private connection: Connection,
   ) {
   }
@@ -173,11 +177,18 @@ export class TasksService {
     return new BaseResponse(200, 'Tasks retrieved successfully', tasks);
   }
 
-  async updateStatusTask(taskId: string, status: number) {
+  async updateStatusTask(taskId: string, status: number, userId?: string) {
     const task = await this.taskModel.findById(taskId);
     if (!task) {
       throw new BadRequestException('Task not found');
     }
+
+    const user = await this.projectMemberModel.findOne({ user_id: new Types.ObjectId(userId), project_id: task.project_id });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const role = user.role;
 
     const allowedTransitions = {
       [TaskStatus.TODO]: [TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED],
@@ -192,12 +203,135 @@ export class TasksService {
       [TaskStatus.CANCELLED]: []
     };
 
-    if (!allowedTransitions[task.status].includes(status)) {
-      throw new BadRequestException(`Can't not change from status ${getTaskStatusLabel(task.status)} to status ${getTaskStatusLabel(status)}`);
+    if (role == RoleInProject.ADMIN) {
+      task.status = status;
+    } else if (role == RoleInProject.LEADER) {
+      if (!allowedTransitions[task.status].includes(status)) {
+        throw new BadRequestException(
+          `Can't not change from status ${getTaskStatusLabel(task.status)} to status ${getTaskStatusLabel(status)}`
+        );
+      }
+      task.status = status;
+    } else if (role == RoleInProject.MEMBER) {
+      if (status === TaskStatus.DONE || status === TaskStatus.CANCELLED) {
+        throw new BadRequestException(
+          `Chỉ admin hoặc leader mới được phép chuyển sang trạng thái ${getTaskStatusLabel(status)}`
+        );
+      }
+      if (!allowedTransitions[task.status].includes(status)) {
+        throw new BadRequestException(
+          `Can't not change from status ${getTaskStatusLabel(task.status)} to status ${getTaskStatusLabel(status)}`
+        );
+      }
+      task.status = status;
     }
-
-    task.status = status;
     await task.save();
     return new BaseResponse(200, 'Cập nhật trạng thái thành công', task);
+  }
+
+
+  async fetchTaskDetail(taskId: string) {
+    const task = await this.taskModel.findById(new Types.ObjectId(taskId))
+      .populate('assignee', '_id username email role')
+      .populate('created_by', '_id username email role');
+
+    const result = task?.toObject();
+    const checklists = await this.checklistModel.find({
+      task_id: new Types.ObjectId(taskId),
+    });
+
+    const comments = await this.taskCommentModel.find({
+      task_id: new Types.ObjectId(taskId),
+    }).populate('user', '_id username email role');
+
+    if (!result) {
+      throw new BadRequestException('Task not found');
+    }
+    return {
+      ...result,
+      checklists,
+      comments
+    };
+  }
+
+  async addChecklist(taskId: string, checklistId: string | null, title: string) {
+    try {
+      if (checklistId) {
+        // Update existing checklist
+        const updatedChecklist = await this.checklistModel.findByIdAndUpdate(
+          new Types.ObjectId(checklistId),
+          { title },
+          { new: true }
+        );
+        if (!updatedChecklist) {
+          throw new Error('Checklist not found');
+        }
+        return updatedChecklist;
+      } else {
+        // Create new checklist
+        const newChecklist = new this.checklistModel({
+          task_id: new Types.ObjectId(taskId),
+          title: title,
+        });
+        const savedChecklist = await newChecklist.save();
+        return savedChecklist;
+      }
+    } catch (error) {
+      throw new Error(`Failed to save checklist: ${error.message}`);
+    }
+  }
+
+  async changeChecklist(checklistId: string) {
+    try {
+      const checklist = await this.checklistModel.findById(new Types.ObjectId(checklistId));
+      if (!checklist) {
+        throw new Error('Checklist not found');
+      }
+      checklist.completed = !checklist.completed;
+      const updatedChecklist = await checklist.save();
+      return updatedChecklist;
+    } catch (error) {
+      throw new Error(`Failed to update checklist: ${error.message}`);
+    }
+  }
+
+  async addOrUpdateComment(
+    taskId: string,
+    comment: string,
+    userId: Types.ObjectId,
+    commentId?: Types.ObjectId | null, // nếu có thì update
+  ) {
+    const task = await this.taskModel.findById(new Types.ObjectId(taskId));
+    if (!task) {
+      throw new Error('Task not found');
+    }
+
+    if (commentId) {
+      // Update existing comment
+      const updatedComment = await this.taskCommentModel.findOneAndUpdate(
+        { _id: commentId, task_id: task._id, user_id: userId },
+        { content: comment },
+        { new: true },
+      );
+
+      if (!updatedComment) {
+        throw new Error('Comment not found or unauthorized');
+      }
+
+      return updatedComment;
+    }
+    try {
+      const newComment = new this.taskCommentModel({
+        task_id: task._id,
+        user_id: userId,
+        content: comment,
+      });
+
+      const savedComment = await newComment.save();
+      return savedComment;
+    } catch (error) {
+      console.error('Failed to save comment:', error);
+      throw new Error('Failed to save comment');
+    }
   }
 }
