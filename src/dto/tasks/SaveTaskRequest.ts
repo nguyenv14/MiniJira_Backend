@@ -62,6 +62,9 @@ export class TaskSaveRequest {
   @IsNumber({}, { message: 'Priority must be a number!' })
   priority?: number;
 
+  @IsNumber({}, { message: 'Status must be a number!' })
+  status?: number;
+
   @IsOptional()
   @IsArray({ message: 'Tags must be an array!' })
   @IsString({ each: true, message: 'Each tag must be a string!' })

@@ -232,8 +232,8 @@ export class TasksService {
 
   async fetchTaskDetail(taskId: string) {
     const task = await this.taskModel.findById(new Types.ObjectId(taskId))
-      .populate('assignee', '_id username email role')
-      .populate('created_by', '_id username email role');
+      .populate('userAssignee', '_id username email role')
+      .populate('userCreated', '_id username email role');
 
     const result = task?.toObject();
     const checklists = await this.checklistModel.find({

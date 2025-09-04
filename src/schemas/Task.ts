@@ -86,7 +86,5 @@ TaskSchema.virtual('project', {
 })
 
 
-
-TaskSchema.set('toJSON', {
-  virtuals: true
-});
+TaskSchema.set('toJSON', { virtuals: true });
+TaskSchema.set('toObject', { virtuals: true });
